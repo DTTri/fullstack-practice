@@ -1,0 +1,107 @@
+version: '3.8'
+
+services:
+  daily-scraper:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: optisigns-daily-scraper
+    environment:
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Scraping Configuration
+      - MAX_ARTICLES=${MAX_ARTICLES:-}
+      - REQUEST_DELAY=${REQUEST_DELAY:-1.0}
+      - MAX_RETRIES=${MAX_RETRIES:-3}
+      
+      # Vector Store Configuration
+      - VECTOR_STORE_NAME=${VECTOR_STORE_NAME:-OptiSigns Support Articles}
+      - ASSISTANT_NAME=${ASSISTANT_NAME:-OptiBot}
+      - CHUNK_SIZE=${CHUNK_SIZE:-8000}
+      - MIN_CHUNK_SIZE=${MIN_CHUNK_SIZE:-100}
+      
+      # Job Configuration
+      - DRY_RUN=${DRY_RUN:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # Delta Detection Configuration
+      - ENABLE_HASH_DETECTION=${ENABLE_HASH_DETECTION:-true}
+      - ENABLE_LASTMOD_DETECTION=${ENABLE_LASTMOD_DETECTION:-true}
+      - FORCE_FULL_UPDATE=${FORCE_FULL_UPDATE:-false}
+      
+      # Rate Limiting
+      - API_RATE_LIMIT=${API_RATE_LIMIT:-0.5}
+      - BATCH_SIZE=${BATCH_SIZE:-10}
+      
+      # Monitoring and Alerting
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - ALERT_ON_ERRORS=${ALERT_ON_ERRORS:-true}
+      - ALERT_THRESHOLD=${ALERT_THRESHOLD:-5}
+    
+    volumes:
+      # Persist data and logs
+      - scraper_data:/app/data
+      - scraper_logs:/app/logs
+      
+      # Optional: Mount local .env file
+      - ../.env:/app/.env:ro
+    
+    restart: unless-stopped
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: Add a monitoring service
+  monitoring:
+    image: prom/prometheus:latest
+    container_name: scraper-monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    profiles:
+      - monitoring
+
+volumes:
+  scraper_data:
+    driver: local
+  scraper_logs:
+    driver: local
+  prometheus_data:
+    driver: local
+
+networks:
+  default:
+    name: scraper-network

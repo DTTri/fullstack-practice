@@ -1,0 +1,6 @@
+2025-07-23 23:16:31 | [32mINFO[0m | src.scraper | _log_scraping_stats:344 |   Total requests: 12
+2025-07-23 23:16:31 | [32mINFO[0m | src.scraper | _log_scraping_stats:345 |   Successful requests: 0
+2025-07-23 23:16:31 | [32mINFO[0m | src.scraper | _log_scraping_stats:346 |   Failed requests: 3
+2025-07-23 23:16:31 | [32mINFO[0m | src.scraper | _log_scraping_stats:347 |   Articles found: 0
+2025-07-23 23:16:31 | [32mINFO[0m | src.scraper | _log_scraping_stats:348 |   Articles processed: 0
+2025-07-23 23:16:31 | [32mINFO[0m | src.scraper | _log_scraping_stats:352 |   Success rate: 0.0%

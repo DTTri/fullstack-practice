@@ -1,0 +1,113 @@
+# DigitalOcean App Platform Configuration for Production Daily Scraper Job
+# Deploy with: doctl apps create deploy/digitalocean-production.yml
+
+name: optisigns-daily-scraper-prod
+region: nyc1
+
+# Scheduled job that runs once per day (meets requirement)
+jobs:
+- name: daily-scraper-job
+  source_dir: /
+  dockerfile_path: Dockerfile
+  
+  # Production instance sizing
+  instance_count: 1
+  instance_size_slug: basic-xs  # $12/month for reliable performance
+  
+  # Schedule: Run daily at 2:00 AM UTC (meets requirement)
+  schedule: "0 2 * * *"
+  
+  # Production environment variables
+  envs:
+  - key: OPENAI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+    # Set this value in DigitalOcean dashboard for security
+  
+  - key: LOG_LEVEL
+    scope: RUN_TIME
+    value: "INFO"
+  
+  - key: DRY_RUN
+    scope: RUN_TIME
+    value: "false"
+  
+  - key: REQUEST_DELAY
+    scope: RUN_TIME
+    value: "2.0"
+  
+  - key: MAX_RETRIES
+    scope: RUN_TIME
+    value: "5"
+  
+  - key: VECTOR_STORE_NAME
+    scope: RUN_TIME
+    value: "OptiSigns Support Articles"
+  
+  - key: ASSISTANT_NAME
+    scope: RUN_TIME
+    value: "OptiBot"
+  
+  - key: CHUNK_SIZE
+    scope: RUN_TIME
+    value: "8000"
+  
+  - key: MIN_CHUNK_SIZE
+    scope: RUN_TIME
+    value: "100"
+  
+  - key: BATCH_SIZE
+    scope: RUN_TIME
+    value: "10"
+
+# Optional: Web service for accessing logs and monitoring
+services:
+- name: scraper-logs-dashboard
+  source_dir: /
+  dockerfile_path: Dockerfile
+  
+  # Minimal instance for log access
+  instance_count: 1
+  instance_size_slug: basic-xxs  # $5/month
+  
+  # Override command to serve logs via HTTP
+  run_command: python -c "
+    import http.server
+    import socketserver
+    import os
+    from pathlib import Path
+    
+    class LogHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, directory='/app/logs', **kwargs)
+    
+    PORT = 8080
+    with socketserver.TCPServer(('', PORT), LogHandler) as httpd:
+        print(f'Serving logs at http://localhost:{PORT}')
+        httpd.serve_forever()
+    "
+  
+  http_port: 8080
+  
+  # Health check
+  health_check:
+    http_path: /
+    initial_delay_seconds: 10
+    period_seconds: 60
+    timeout_seconds: 10
+    failure_threshold: 3
+    success_threshold: 1
+  
+  # Basic environment for log server
+  envs:
+  - key: LOG_LEVEL
+    scope: RUN_TIME
+    value: "INFO"
+
+# Database for persistent state (optional upgrade)
+databases:
+- name: scraper-state-db
+  engine: PG
+  version: "14"
+  size: db-s-dev-database  # $15/month
+  num_nodes: 1

@@ -1,0 +1,193 @@
+# DigitalOcean App Platform Configuration
+# Deploy with: doctl apps create deploy/digitalocean.yml
+
+name: optisigns-daily-scraper
+region: nyc1
+
+services:
+- name: daily-scraper
+  source_dir: /
+  github:
+    repo: your-username/your-repo-name  # Update with your GitHub repo
+    branch: main
+    deploy_on_push: true
+  
+  dockerfile_path: Dockerfile
+  
+  # Job configuration - runs once daily
+  instance_count: 1
+  instance_size_slug: basic-xxs  # $5/month
+  
+  # Environment variables
+  envs:
+  - key: OPENAI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "your-openai-api-key"  # Set this in DigitalOcean dashboard
+  
+  - key: LOG_LEVEL
+    scope: RUN_TIME
+    value: "INFO"
+  
+  - key: DRY_RUN
+    scope: RUN_TIME
+    value: "false"
+  
+  - key: REQUEST_DELAY
+    scope: RUN_TIME
+    value: "1.0"
+  
+  - key: MAX_RETRIES
+    scope: RUN_TIME
+    value: "3"
+  
+  - key: VECTOR_STORE_NAME
+    scope: RUN_TIME
+    value: "OptiSigns Support Articles"
+  
+  - key: CHUNK_SIZE
+    scope: RUN_TIME
+    value: "8000"
+  
+  - key: MIN_CHUNK_SIZE
+    scope: RUN_TIME
+    value: "100"
+  
+  - key: ENABLE_HASH_DETECTION
+    scope: RUN_TIME
+    value: "true"
+  
+  - key: ENABLE_LASTMOD_DETECTION
+    scope: RUN_TIME
+    value: "true"
+  
+  - key: API_RATE_LIMIT
+    scope: RUN_TIME
+    value: "0.5"
+  
+  - key: BATCH_SIZE
+    scope: RUN_TIME
+    value: "10"
+  
+  - key: ALERT_ON_ERRORS
+    scope: RUN_TIME
+    value: "true"
+  
+  - key: ALERT_THRESHOLD
+    scope: RUN_TIME
+    value: "5"
+  
+  # Health check
+  health_check:
+    http_path: /health
+    initial_delay_seconds: 30
+    period_seconds: 60
+    timeout_seconds: 10
+    success_threshold: 1
+    failure_threshold: 3
+
+# Jobs configuration for scheduled execution
+jobs:
+- name: daily-scraper-job
+  source_dir: /
+  github:
+    repo: your-username/your-repo-name  # Update with your GitHub repo
+    branch: main
+  
+  dockerfile_path: Dockerfile
+  
+  # Schedule: Run daily at 2 AM UTC
+  kind: CRON
+  schedule: "0 2 * * *"
+  
+  # Job configuration
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  
+  # Same environment variables as service
+  envs:
+  - key: OPENAI_API_KEY
+    scope: RUN_TIME
+    type: SECRET
+    value: "your-openai-api-key"
+  
+  - key: LOG_LEVEL
+    scope: RUN_TIME
+    value: "INFO"
+  
+  - key: DRY_RUN
+    scope: RUN_TIME
+    value: "false"
+  
+  - key: REQUEST_DELAY
+    scope: RUN_TIME
+    value: "1.0"
+  
+  - key: MAX_RETRIES
+    scope: RUN_TIME
+    value: "3"
+  
+  - key: VECTOR_STORE_NAME
+    scope: RUN_TIME
+    value: "OptiSigns Support Articles"
+  
+  - key: CHUNK_SIZE
+    scope: RUN_TIME
+    value: "8000"
+  
+  - key: MIN_CHUNK_SIZE
+    scope: RUN_TIME
+    value: "100"
+  
+  - key: ENABLE_HASH_DETECTION
+    scope: RUN_TIME
+    value: "true"
+  
+  - key: ENABLE_LASTMOD_DETECTION
+    scope: RUN_TIME
+    value: "true"
+  
+  - key: API_RATE_LIMIT
+    scope: RUN_TIME
+    value: "0.5"
+  
+  - key: BATCH_SIZE
+    scope: RUN_TIME
+    value: "10"
+  
+  - key: ALERT_ON_ERRORS
+    scope: RUN_TIME
+    value: "true"
+  
+  - key: ALERT_THRESHOLD
+    scope: RUN_TIME
+    value: "5"
+
+# Optional: Database for persistent state storage
+# databases:
+# - name: scraper-db
+#   engine: PG
+#   version: "13"
+#   size: db-s-dev-database
+#   num_nodes: 1
+
+# Alerts configuration
+alerts:
+- rule: CPU_UTILIZATION
+  spec:
+    operator: GREATER_THAN
+    value: 80
+    window: 5m
+  disabled: false
+
+- rule: MEM_UTILIZATION
+  spec:
+    operator: GREATER_THAN
+    value: 80
+    window: 5m
+  disabled: false
+
+# Domains (optional)
+# domains:
+# - domain: scraper.yourdomain.com
+#   type: PRIMARY

@@ -1,0 +1,6 @@
+openai
+python-dotenv
+pyyaml
+click
+rich
+packaging
